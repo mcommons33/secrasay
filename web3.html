@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secrasay - Anonymous Blockchain Comments</title>
+    <script src="https://cdn.ethers.io/lib/ethers-5.6.umd.min.js" type="text/javascript"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            color: #2c3e50;
+        }
+        
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        
+        .section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            flex: 1;
+            min-width: 300px;
+        }
+        
+        .comments-section {
+            flex: 2;
+            min-width: 500px;
+        }
+        
+        .comment {
+            background: #f9f9f9;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+        
+        .comment-meta {
+            color: #7f8c8d;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+        }
+        
+        .comment-actions {
+            margin-top: 10px;
+            text-align: right;
+        }
+        
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        button:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+        
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        
+        textarea {
+            min-height: 100px;
+        }
+        
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .checkbox-container input {
+            width: auto;
+            margin-right: 10px;
+        }
+        
+        .status {
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+        
+        .status.error {
+            background-color: #ffecec;
+            color: #e74c3c;
+            border: 1px solid #e74c3c;
+        }
+        
+        .status.success {
+            background-color: #e7f5ea;
+            color: #27ae60;
+            border: 1px solid #27ae60;
+        }
+        
+        .status.warning {
+            background-color: #fff8e1;
+            color: #f39c12;
+            border: 1px solid #f39c12;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .fee-info {
+            background-color: #e8f4f8;
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+        
+        .warning-text {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        
+        .error-container {
+            color: red;
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px solid red;
+            background: #fff8f8;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Secrasay</h1>
+        <p>Anonymous Blockchain Comments</p>
+    </header>
+    
+    <div id="connection-status" class="status warning">
+        Loading application...
+    </div>
+    
+    <div class="container">
+        <div class="section">
+            <h2>Connect & Post</h2>
+            <button id="connect-wallet" disabled>Connect Wallet</button>
+            <div id="wallet-info" class="hidden">
+                <p>Connected: <span id="wallet-address"></span></p>
+                <p>Whitelist Status: <span id="whitelist-status">Checking...</span></p>
+            </div>
+            
+            <div id="post-section" class="hidden">
+                <h3>Post a Comment</h3>
+                <div class="fee-info">
+                    <p>Comment Fee: <span id="comment-fee">Loading...</span> ETH</p>
+                    <p id="anonymity-fee-container" class="hidden">True Anonymity Fee: <span id="anonymity-fee">Loading...</span> ETH (additional)</p>
+                </div>
+                <form id="post-form">
+                    <textarea id="comment-text" placeholder="Type your comment here..." required></textarea>
+                    <div id="true-anonymity-option" class="checkbox-container hidden">
+                        <input type="checkbox" id="true-anonymity">
+                        <label for="true-anonymity">Enable True Anonymity (cannot be revealed even if someone pays)</label>
+                    </div>
+                    <div id="post-status"></div>
+                    <button type="submit" id="post-button">Post Comment</button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="section comments-section">
+            <h2>Comments</h2>
+            <div id="comments-container">
+                <p>Loading comments...</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Global variables
+        let provider, signer, contract;
+        let userAddress = null;
+        let hasPostedComment = false; // Track if user has posted at least one comment
+        let contractAddress = "YOUR_CONTRACT_ADDRESS";
+        let contractABI = null;
+        
+        // DOM Elements
+        const statusElement = document.getElementById('connection-status');
+        const connectButton = document.getElementById('connect-wallet');
+        const commentsContainer = document.getElementById('comments-container');
+        
+        // Initialize the application when the page loads
+        window.addEventListener('DOMContentLoaded', init);
+        
+        // Load ABI from external file
+        async function loadABI() {
+            try {
+                statusElement.innerText = "Loading contract ABI...";
+                
+                // First try to fetch with specified path
+                let response;
+                try {
+                    response = await fetch('./Contract/abi.json');
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                } catch (fetchError) {
+                    console.warn("Failed to load ABI from ./Contract/abi.json:", fetchError);
+                    
+                    // Try alternative path
+                    try {
+                        response = await fetch('../Contract/abi.json');
+                        if (!response.ok) {
+                            throw new Error(`HTTP error with alternative path! Status: ${response.status}`);
+                        }
+                    } catch (altFetchError) {
+                        console.warn("Failed to load ABI from ../Contract/abi.json:", altFetchError);
+                        
+                        // Last resort: try to load from root
+                        response = await fetch('/Contract/abi.json');
+                        if (!response.ok) {
+                            throw new Error(`HTTP error with root path! Status: ${response.status}`);
+                        }
+                    }
+                }
+                
+                contractABI = await response.json();
+                console.log("ABI loaded successfully:", contractABI.length, "entries");
+                
+                // Verify the ABI has required functions
+                const requiredFunctions = ['post_comment', 'get_comment', 'reveal_commenter', 'whitelist'];
+                const missingFunctions = requiredFunctions.filter(func => 
+                    !contractABI.some(entry => entry.name === func)
+                );
+                
+                if (missingFunctions.length > 0) {
+                    console.warn("Loaded ABI is missing required functions:", missingFunctions);
+                    statusElement.innerText = `Warning: ABI may be incomplete - missing ${missingFunctions.join(', ')}`;
+                } else {
+                    statusElement.innerText = "Contract ABI loaded successfully. Please connect your wallet.";
+                }
+                
+                // Enable connect button once ABI is loaded
+                connectButton.disabled = false;
+                
+                return true;
+            } catch (error) {
+                console.error("Error loading ABI:", error);
+                
+                // Display a more helpful error message and recovery options
+                const errorHTML = `
+                    <div class="error-container">
+                        <p><strong>Error loading ABI:</strong> ${error.message}</p>
+                        <p>Please check that:</p>
+                        <ul>
+                            <li>You're running this page from a web server (not just opening the HTML file directly)</li>
+                            <li>The Contract/abi.json file is in the correct location</li>
+                            <li>Your web server has proper CORS settings enabled</li>
+                        </ul>
+                    </div>
+                `;
+                
+                document.querySelector('.section:first-of-type').insertAdjacentHTML('beforeend', errorHTML);
+                statusElement.innerText = "Error loading ABI file";
+                
+                return false;
+            }
+        }
+        
+        // Initialize the page
+        async function init() {
+            connectButton.disabled = true;
+            statusElement.innerText = "Initializing...";
+            
+            // Load ABI first
+            const abiLoaded = await loadABI();
+            if (!abiLoaded) {
+                return; // Stop initialization if ABI failed to load
+            }
+            
+            // Setup event listeners
+            connectButton.addEventListener('click', connectWallet);
+            document.getElementById('post-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                postComment();
+            });
+            
+            // Check if Ethereum provider exists
+            if (window.ethereum) {
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                
+                // Check if already connected
+                try {
+                    const accounts = await provider.listAccounts();
+                    if (accounts.length > 0) {
+                        await connectWallet();
+                    }
+                } catch (error) {
+                    console.error("Error checking connection:", error);
+                }
+                
+                // Listen for account changes
+                window.ethereum.on('accountsChanged', (accounts) => {
+                    if (accounts.length === 0) {
+                        disconnectWallet();
+                    } else {
+                        connectWallet();
+                    }
+                });
+            } else {
+                updateConnectionStatus("Please install MetaMask or another Ethereum wallet extension.", "error");
+            }
+        }
+        
+        // Connect to the user's wallet
+        async function connectWallet() {
+            try {
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                userAddress = accounts[0];
+                
+                // Update UI
+                document.getElementById('wallet-address').textContent = `${userAddress.substring(0, 6)}...${userAddress.substring(38)}`;
+                document.getElementById('wallet-info').classList.remove('hidden');
+                
+                // Update connection status
+                updateConnectionStatus("Wallet connected successfully!", "success");
+                
+                // Setup contract with loaded ABI
+                signer = provider.getSigner();
+                contract = new ethers.Contract(contractAddress, contractABI, signer);
+                
+                // Check whitelist status
+                checkWhitelistStatus();
+                
+                // Show post section
+                document.getElementById('post-section').classList.remove('hidden');
+                
+                // Load fees
+                loadFees();
+                
+                // Load comments
+                loadComments();
+                
+                // Check if user has posted before (to enable true anonymity option)
+                checkUserPostHistory();
+                
+                return true;
+            } catch (error) {
+                console.error("Error connecting wallet:", error);
+                updateConnectionStatus("Failed to connect wallet: " + error.message, "error");
+                return false;
+            }
+        }
+        
+        // Disconnect wallet
+        function disconnectWallet() {
+            userAddress = null;
+            document.getElementById('wallet-info').classList.add('hidden');
+            document.getElementById('post-section').classList.add('hidden');
+            updateConnectionStatus("Please connect your wallet to continue.", "warning");
+        }
+        
+        // Check if the user is whitelisted
+        async function checkWhitelistStatus() {
+            try {
+                const isWhitelisted = await contract.whitelist(userAddress);
+                const statusElement = document.getElementById('whitelist-status');
+                
+                if (isWhitelisted) {
+                    statusElement.textContent = "Whitelisted ✓";
+                    statusElement.style.color = "#27ae60";
+                } else {
+                    statusElement.textContent = "Not Whitelisted ✗";
+                    statusElement.style.color = "#e74c3c";
+                }
+            } catch (error) {
+                console.error("Error checking whitelist status:", error);
+                document.getElementById('whitelist-status').textContent = "Error checking status";
+            }
+        }
+        
+        // Load contract fees
+        async function loadFees() {
+            try {
+                const commentFee = await contract.comment_fee();
+                const trueAnonymityFee = await contract.true_anonymity_fee();
+                const revealFee = await contract.reveal_fee();
+                
+                // Display fees in ETH
+                document.getElementById('comment-fee').textContent = ethers.utils.formatEther(commentFee);
+                document.getElementById('anonymity-fee').textContent = ethers.utils.formatEther(trueAnonymityFee);
+                
+                // Store reveal fee for later use
+                window.revealFee = revealFee;
+                
+                // Show anonymity fee section only for users who have posted before
+                if (hasPostedComment) {
+                    document.getElementById('anonymity-fee-container').classList.remove('hidden');
+                    document.getElementById('true-anonymity-option').classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error("Error loading fees:", error);
+                document.getElementById('comment-fee').textContent = "Error loading";
+            }
+        }
+        
+        // Check if the user has posted comments before
+        async function checkUserPostHistory() {
+            try {
+                // Get total comment count
+                const commentCount = await contract.comment_count();

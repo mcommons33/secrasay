@@ -1,1 +1,380 @@
-[{"type":"event","name":"CommentPosted","inputs":[{"name":"comment_id","type":"uint256","components":null,"internalType":null,"indexed":true},{"name":"timestamp","type":"uint256","components":null,"internalType":null,"indexed":false}],"anonymous":false},{"type":"event","name":"CommentRevealed","inputs":[{"name":"comment_id","type":"uint256","components":null,"internalType":null,"indexed":true},{"name":"author","type":"address","components":null,"internalType":null,"indexed":false},{"name":"revealer","type":"address","components":null,"internalType":null,"indexed":false}],"anonymous":false},{"type":"constructor","stateMutability":"nonpayable","inputs":[{"name":"_comment_fee","type":"uint256","components":null,"internalType":null},{"name":"_reveal_fee","type":"uint256","components":null,"internalType":null},{"name":"_true_anonymity_fee","type":"uint256","components":null,"internalType":null}]},{"type":"function","name":"add_to_whitelist","stateMutability":"nonpayable","inputs":[{"name":"user","type":"address","components":null,"internalType":null}],"outputs":[]},{"type":"function","name":"remove_from_whitelist","stateMutability":"nonpayable","inputs":[{"name":"user","type":"address","components":null,"internalType":null}],"outputs":[]},{"type":"function","name":"post_comment","stateMutability":"payable","inputs":[{"name":"content","type":"string","components":null,"internalType":null},{"name":"want_true_anonymity","type":"bool","components":null,"internalType":null}],"outputs":[]},{"type":"function","name":"reveal_commenter","stateMutability":"payable","inputs":[{"name":"comment_id","type":"uint256","components":null,"internalType":null}],"outputs":[]},{"type":"function","name":"get_comment","stateMutability":"view","inputs":[{"name":"comment_id","type":"uint256","components":null,"internalType":null}],"outputs":[{"name":"","type":"string","components":null,"internalType":null},{"name":"","type":"uint256","components":null,"internalType":null},{"name":"","type":"address","components":null,"internalType":null},{"name":"","type":"bool","components":null,"internalType":null}]},{"type":"function","name":"update_fees","stateMutability":"nonpayable","inputs":[{"name":"new_comment_fee","type":"uint256","components":null,"internalType":null},{"name":"new_reveal_fee","type":"uint256","components":null,"internalType":null},{"name":"new_true_anonymity_fee","type":"uint256","components":null,"internalType":null}],"outputs":[]},{"type":"function","name":"update_fee_recipient","stateMutability":"nonpayable","inputs":[{"name":"new_recipient","type":"address","components":null,"internalType":null}],"outputs":[]},{"type":"function","name":"owner","stateMutability":"view","inputs":[],"outputs":[{"name":"","type":"address","components":null,"internalType":null}]},{"type":"function","name":"fee_recipient","stateMutability":"view","inputs":[],"outputs":[{"name":"","type":"address","components":null,"internalType":null}]},{"type":"function","name":"comment_fee","stateMutability":"view","inputs":[],"outputs":[{"name":"","type":"uint256","components":null,"internalType":null}]},{"type":"function","name":"reveal_fee","stateMutability":"view","inputs":[],"outputs":[{"name":"","type":"uint256","components":null,"internalType":null}]},{"type":"function","name":"true_anonymity_fee","stateMutability":"view","inputs":[],"outputs":[{"name":"","type":"uint256","components":null,"internalType":null}]},{"type":"function","name":"whitelist","stateMutability":"view","inputs":[{"name":"arg0","type":"address","components":null,"internalType":null}],"outputs":[{"name":"","type":"bool","components":null,"internalType":null}]},{"type":"function","name":"comments","stateMutability":"view","inputs":[{"name":"arg0","type":"uint256","components":null,"internalType":null}],"outputs":[{"name":"","type":"tuple","components":[{"name":"id","type":"uint256","components":null,"internalType":null},{"name":"content","type":"string","components":null,"internalType":null},{"name":"timestamp","type":"uint256","components":null,"internalType":null},{"name":"author","type":"address","components":null,"internalType":null},{"name":"is_truly_anonymous","type":"bool","components":null,"internalType":null},{"name":"is_revealed","type":"bool","components":null,"internalType":null}],"internalType":null}]},{"type":"function","name":"comment_count","stateMutability":"view","inputs":[],"outputs":[{"name":"","type":"uint256","components":null,"internalType":null}]}]
+[
+    {
+      "type": "event",
+      "name": "CommentPosted",
+      "inputs": [
+        {
+          "name": "comment_id",
+          "type": "uint256",
+          "components": null,
+          "internalType": null,
+          "indexed": true
+        },
+        {
+          "name": "timestamp",
+          "type": "uint256",
+          "components": null,
+          "internalType": null,
+          "indexed": false
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "CommentRevealed",
+      "inputs": [
+        {
+          "name": "comment_id",
+          "type": "uint256",
+          "components": null,
+          "internalType": null,
+          "indexed": true
+        },
+        {
+          "name": "author",
+          "type": "address",
+          "components": null,
+          "internalType": null,
+          "indexed": false
+        },
+        {
+          "name": "revealer",
+          "type": "address",
+          "components": null,
+          "internalType": null,
+          "indexed": false
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "constructor",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "_comment_fee",
+          "type": "uint256",
+          "components": null,
+          "internalType": null
+        },
+        {
+          "name": "_reveal_fee",
+          "type": "uint256",
+          "components": null,
+          "internalType": null
+        },
+        {
+          "name": "_true_anonymity_fee",
+          "type": "uint256",
+          "components": null,
+          "internalType": null
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "add_to_whitelist",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "user",
+          "type": "address",
+          "components": null,
+          "internalType": null
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "remove_from_whitelist",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "user",
+          "type": "address",
+          "components": null,
+          "internalType": null
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "post_comment",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "name": "content",
+          "type": "string",
+          "components": null,
+          "internalType": null
+        },
+        {
+          "name": "want_true_anonymity",
+          "type": "bool",
+          "components": null,
+          "internalType": null
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "reveal_commenter",
+      "stateMutability": "payable",
+      "inputs": [
+        {
+          "name": "comment_id",
+          "type": "uint256",
+          "components": null,
+          "internalType": null
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "get_comment",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "name": "comment_id",
+          "type": "uint256",
+          "components": null,
+          "internalType": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "string",
+          "components": null,
+          "internalType": null
+        },
+        {
+          "name": "",
+          "type": "uint256",
+          "components": null,
+          "internalType": null
+        },
+        {
+          "name": "",
+          "type": "address",
+          "components": null,
+          "internalType": null
+        },
+        {
+          "name": "",
+          "type": "bool",
+          "components": null,
+          "internalType": null
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "update_fees",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "new_comment_fee",
+          "type": "uint256",
+          "components": null,
+          "internalType": null
+        },
+        {
+          "name": "new_reveal_fee",
+          "type": "uint256",
+          "components": null,
+          "internalType": null
+        },
+        {
+          "name": "new_true_anonymity_fee",
+          "type": "uint256",
+          "components": null,
+          "internalType": null
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "update_fee_recipient",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "new_recipient",
+          "type": "address",
+          "components": null,
+          "internalType": null
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "type": "function",
+      "name": "owner",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "components": null,
+          "internalType": null
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "fee_recipient",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "components": null,
+          "internalType": null
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "comment_fee",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "components": null,
+          "internalType": null
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "reveal_fee",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "components": null,
+          "internalType": null
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "true_anonymity_fee",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "components": null,
+          "internalType": null
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "whitelist",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "name": "arg0",
+          "type": "address",
+          "components": null,
+          "internalType": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "components": null,
+          "internalType": null
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "comments",
+      "stateMutability": "view",
+      "inputs": [
+        {
+          "name": "arg0",
+          "type": "uint256",
+          "components": null,
+          "internalType": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "tuple",
+          "components": [
+            {
+              "name": "id",
+              "type": "uint256",
+              "components": null,
+              "internalType": null
+            },
+            {
+              "name": "content",
+              "type": "string",
+              "components": null,
+              "internalType": null
+            },
+            {
+              "name": "timestamp",
+              "type": "uint256",
+              "components": null,
+              "internalType": null
+            },
+            {
+              "name": "author",
+              "type": "address",
+              "components": null,
+              "internalType": null
+            },
+            {
+              "name": "is_truly_anonymous",
+              "type": "bool",
+              "components": null,
+              "internalType": null
+            },
+            {
+              "name": "is_revealed",
+              "type": "bool",
+              "components": null,
+              "internalType": null
+            }
+          ],
+          "internalType": null
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "comment_count",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "components": null,
+          "internalType": null
+        }
+      ]
+    }
+  ]
+  

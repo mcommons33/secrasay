@@ -224,7 +224,7 @@
         let provider, signer, contract;
         let userAddress = null;
         let hasPostedComment = false; // Track if user has posted at least one comment
-        let contractAddress = "YOUR_CONTRACT_ADDRESS";
+        let contractAddress = "0x0005BdFC5741d03332366E1c09969220233F306A";
         let contractABI = null;
         
         // DOM Elements
@@ -452,3 +452,214 @@
             try {
                 // Get total comment count
                 const commentCount = await contract.comment_count();
+                const totalComments = commentCount.toNumber();
+                
+                // Simple check if user has posted comments
+                // We'll loop through recent comments to see if any are from this user
+                const maxCheckCount = Math.min(totalComments, 10); // Check up to 10 most recent comments
+                let foundUserComment = false;
+                
+                for (let i = totalComments - 1; i >= totalComments - maxCheckCount && i >= 0; i--) {
+                    const commentId = i;
+                    const comment = await contract.get_comment(commentId);
+                    
+                    // If comment has been revealed and it's this user
+                    if (comment.revealed && comment.author.toLowerCase() === userAddress.toLowerCase()) {
+                        foundUserComment = true;
+                        break;
+                    }
+                }
+                
+                if (foundUserComment) {
+                    hasPostedComment = true;
+                    document.getElementById('anonymity-fee-container').classList.remove('hidden');
+                    document.getElementById('true-anonymity-option').classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error("Error checking user post history:", error);
+            }
+        }
+        
+        // Post a new comment
+        async function postComment() {
+            try {
+                const commentText = document.getElementById('comment-text').value.trim();
+                if (!commentText) {
+                    return setPostStatus("Please enter a comment.", "error");
+                }
+                
+                // Check if true anonymity is selected
+                const trueAnonymitySelected = 
+                    document.getElementById('true-anonymity') && 
+                    document.getElementById('true-anonymity').checked;
+                
+                // Get appropriate fee
+                let fee = await contract.comment_fee();
+                if (trueAnonymitySelected) {
+                    fee = fee.add(await contract.true_anonymity_fee());
+                }
+                
+                // Show loading state
+                setPostStatus("Posting comment...", "warning");
+                document.getElementById('post-button').disabled = true;
+                document.getElementById('post-button').innerHTML = 'Posting... <div class="loading"></div>';
+                
+                // Call contract function
+                const tx = await contract.post_comment(
+                    commentText,
+                    trueAnonymitySelected,
+                    { value: fee }
+                );
+                
+                // Wait for transaction to be mined
+                await tx.wait();
+                
+                // Update UI
+                document.getElementById('comment-text').value = '';
+                document.getElementById('post-button').disabled = false;
+                document.getElementById('post-button').innerHTML = 'Post Comment';
+                
+                // Enable true anonymity option
+                if (!hasPostedComment) {
+                    hasPostedComment = true;
+                    document.getElementById('anonymity-fee-container').classList.remove('hidden');
+                    document.getElementById('true-anonymity-option').classList.remove('hidden');
+                }
+                
+                // Show success message
+                setPostStatus("Comment posted successfully!", "success");
+                
+                // Reload comments
+                loadComments();
+            } catch (error) {
+                console.error("Error posting comment:", error);
+                document.getElementById('post-button').disabled = false;
+                document.getElementById('post-button').innerHTML = 'Post Comment';
+                setPostStatus("Failed to post comment: " + errorMessage(error), "error");
+            }
+        }
+        
+        // Load all comments
+        async function loadComments() {
+            try {
+                // Clear existing comments
+                commentsContainer.innerHTML = '<p>Loading comments...</p>';
+                
+                // Get total comment count
+                const commentCount = await contract.comment_count();
+                const totalComments = commentCount.toNumber();
+                
+                if (totalComments === 0) {
+                    commentsContainer.innerHTML = '<p>No comments yet. Be the first to post!</p>';
+                    return;
+                }
+                
+                // Load all comments (most recent first)
+                let commentsHTML = '';
+                for (let i = totalComments - 1; i >= 0; i--) {
+                    const commentId = i;
+                    const comment = await contract.get_comment(commentId);
+                    
+                    // Format timestamp
+                    const date = new Date(comment.timestamp.toNumber() * 1000);
+                    const formattedDate = date.toLocaleString();
+                    
+                    // Determine author display
+                    let authorDisplay = "Anonymous";
+                    if (comment.revealed) {
+                        authorDisplay = `${comment.author.substring(0, 6)}...${comment.author.substring(38)}`;
+                    }
+                    
+                    // Create HTML for this comment
+                    commentsHTML += `
+                        <div class="comment">
+                            <div class="comment-meta">
+                                <span>By: ${authorDisplay}</span> | 
+                                <span>Posted: ${formattedDate}</span> | 
+                                <span>ID: ${commentId}</span>
+                            </div>
+                            <div class="comment-content">
+                                ${comment.content}
+                            </div>
+                            <div class="comment-actions">
+                                ${!comment.revealed && !comment.true_anonymity ? 
+                                    `<button onclick="revealCommenter(${commentId})">
+                                        Reveal Author (${ethers.utils.formatEther(window.revealFee)} ETH)
+                                    </button>` : 
+                                    (comment.true_anonymity && !comment.revealed ? 
+                                        '<span class="warning-text">True anonymity enabled</span>' : 
+                                        '')}
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                commentsContainer.innerHTML = commentsHTML;
+            } catch (error) {
+                console.error("Error loading comments:", error);
+                commentsContainer.innerHTML = '<p>Error loading comments. Please try again later.</p>';
+            }
+        }
+        
+        // Reveal a commenter's identity
+        async function revealCommenter(commentId) {
+            try {
+                // Get reveal fee
+                const revealFee = window.revealFee;
+                
+                // Confirm action
+                if (!confirm(`Are you sure you want to reveal this commenter's identity? This will cost ${ethers.utils.formatEther(revealFee)} ETH.`)) {
+                    return;
+                }
+                
+                // Call contract function
+                const tx = await contract.reveal_commenter(commentId, { value: revealFee });
+                
+                // Wait for transaction to be mined
+                await tx.wait();
+                
+                // Reload comments
+                loadComments();
+            } catch (error) {
+                console.error("Error revealing commenter:", error);
+                alert("Failed to reveal commenter: " + errorMessage(error));
+            }
+        }
+        
+        // Helper function to set post status with appropriate styling
+        function setPostStatus(message, type) {
+            const statusElement = document.getElementById('post-status');
+            statusElement.innerHTML = message;
+            statusElement.className = `status ${type}`;
+        }
+        
+        // Helper function to update connection status
+        function updateConnectionStatus(message, type) {
+            statusElement.innerText = message;
+            statusElement.className = `status ${type}`;
+        }
+        
+        // Helper function to extract readable error message
+        function errorMessage(error) {
+            // Check for common error patterns
+            if (error.data && error.data.message) {
+                return error.data.message;
+            } else if (error.message) {
+                // Check for "MetaMask" errors which include user rejections
+                if (error.message.includes("user rejected")) {
+                    return "Transaction rejected by user";
+                }
+                
+                // Check for revert errors 
+                const revertMatch = error.message.match(/reverted with reason string '([^']+)'/);
+                if (revertMatch) {
+                    return revertMatch[1];
+                }
+                
+                return error.message;
+            }
+            return String(error);
+        }
+    </script>
+</body>
+</html>

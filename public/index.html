@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Secrasay - Anonymous Blockchain Comments</title>
-    <script src="https://cdn.ethers.io/lib/ethers-5.6.umd.min.js" type="text/javascript"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
     <style>
         body {
             font-family: 'Arial', sans-serif;
@@ -358,6 +358,9 @@
         // Connect to the user's wallet
         async function connectWallet() {
             try {
+                // Re-initialize the provider to ensure it's available
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                
                 const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
                 userAddress = accounts[0];
                 
@@ -539,7 +542,7 @@
             }
         }
         
-        // Load all comments
+            // Load all comments
         async function loadComments() {
             try {
                 // Clear existing comments
@@ -554,53 +557,97 @@
                     return;
                 }
                 
+                // Ensure reveal fee is loaded
+                if (!window.revealFee) {
+                    try {
+                        window.revealFee = await contract.reveal_fee();
+                    } catch (feeError) {
+                        console.error("Error loading reveal fee:", feeError);
+                        window.revealFee = ethers.BigNumber.from("0");
+                    }
+                }
+                
                 // Load all comments (most recent first)
                 let commentsHTML = '';
                 for (let i = totalComments - 1; i >= 0; i--) {
-                    const commentId = i;
-                    const comment = await contract.get_comment(commentId);
-                    
-                    // Format timestamp
-                    const date = new Date(comment.timestamp.toNumber() * 1000);
-                    const formattedDate = date.toLocaleString();
-                    
-                    // Determine author display
-                    let authorDisplay = "Anonymous";
-                    if (comment.revealed) {
-                        authorDisplay = `${comment.author.substring(0, 6)}...${comment.author.substring(38)}`;
+                    try {
+                        const commentId = i;
+                        
+                        // Get comment data - returns array of [content, timestamp, author, is_truly_anonymous]
+                        const commentData = await contract.get_comment(commentId);
+                        console.log(`Comment ${commentId} data:`, commentData);
+                        
+                        // Extract values from the array
+                        const content = commentData[0];
+                        const timestamp = commentData[1];
+                        const author = commentData[2];
+                        const isTrulyAnonymous = commentData[3];
+                        
+                        // Determine if the author is revealed (non-zero address)
+                        const isRevealed = author !== "0x0000000000000000000000000000000000000000";
+                        
+                        // Format timestamp
+                        const date = new Date(timestamp.toNumber() * 1000);
+                        const formattedDate = date.toLocaleString();
+                        
+                        // Determine author display
+                        let authorDisplay = "Anonymous";
+                        if (isRevealed) {
+                            authorDisplay = `${author.substring(0, 6)}...${author.substring(38)}`;
+                        }
+                        
+                        // Create HTML for this comment
+                        let revealFeeText = "fee";
+                        try {
+                            if (window.revealFee) {
+                                revealFeeText = ethers.utils.formatEther(window.revealFee) + " ETH";
+                            }
+                        } catch (error) {
+                            console.warn("Error formatting reveal fee:", error);
+                        }
+                        
+                        commentsHTML += `
+                            <div class="comment">
+                                <div class="comment-meta">
+                                    <span>By: ${authorDisplay}</span> | 
+                                    <span>Posted: ${formattedDate}</span> | 
+                                    <span>ID: ${commentId}</span>
+                                </div>
+                                <div class="comment-content">
+                                    ${content}
+                                </div>
+                                <div class="comment-actions">
+                                    ${!isRevealed && !isTrulyAnonymous ? 
+                                        `<button onclick="revealCommenter(${commentId})">
+                                            Reveal Author (${revealFeeText})
+                                        </button>` : 
+                                        (isTrulyAnonymous && !isRevealed ? 
+                                            '<span class="warning-text">True anonymity enabled</span>' : 
+                                            '')}
+                                </div>
+                            </div>
+                        `;
+                    } catch (commentError) {
+                        console.error(`Error loading comment ${i}:`, commentError);
+                        commentsHTML += `
+                            <div class="comment">
+                                <div class="comment-meta">Error loading comment ID: ${i}</div>
+                            </div>
+                        `;
                     }
-                    
-                    // Create HTML for this comment
-                    commentsHTML += `
-                        <div class="comment">
-                            <div class="comment-meta">
-                                <span>By: ${authorDisplay}</span> | 
-                                <span>Posted: ${formattedDate}</span> | 
-                                <span>ID: ${commentId}</span>
-                            </div>
-                            <div class="comment-content">
-                                ${comment.content}
-                            </div>
-                            <div class="comment-actions">
-                                ${!comment.revealed && !comment.true_anonymity ? 
-                                    `<button onclick="revealCommenter(${commentId})">
-                                        Reveal Author (${ethers.utils.formatEther(window.revealFee)} ETH)
-                                    </button>` : 
-                                    (comment.true_anonymity && !comment.revealed ? 
-                                        '<span class="warning-text">True anonymity enabled</span>' : 
-                                        '')}
-                            </div>
-                        </div>
-                    `;
                 }
                 
-                commentsContainer.innerHTML = commentsHTML;
+                commentsContainer.innerHTML = commentsHTML || '<p>No comments could be loaded. Please try again.</p>';
             } catch (error) {
                 console.error("Error loading comments:", error);
-                commentsContainer.innerHTML = '<p>Error loading comments. Please try again later.</p>';
+                commentsContainer.innerHTML = `
+                    <p>Error loading comments: ${error.message}</p>
+                    <button onclick="loadComments()">Try Again</button>
+                `;
             }
         }
         
+        // Reveal a commenter's identity
         // Reveal a commenter's identity
         async function revealCommenter(commentId) {
             try {
@@ -612,11 +659,20 @@
                     return;
                 }
                 
+                // Show loading state
+                const commentElement = document.querySelector(`.comment:nth-child(${commentId + 1}) .comment-actions`);
+                if (commentElement) {
+                    commentElement.innerHTML = 'Revealing... <div class="loading"></div>';
+                }
+                
                 // Call contract function
                 const tx = await contract.reveal_commenter(commentId, { value: revealFee });
                 
                 // Wait for transaction to be mined
                 await tx.wait();
+                
+                // Show success message
+                alert("Commenter revealed successfully!");
                 
                 // Reload comments
                 loadComments();

@@ -12,3 +12,6 @@ Secrasay is a blockchain-based anonymous commenting platform built on Ethereum u
 
 - **Enhanced Anonymity Option:**  
   Users can choose to pay an extra fee for true anonymity, ensuring their identity remains hidden even if a reveal is requested.
+
+## URL
+https://secrasay.web.app/

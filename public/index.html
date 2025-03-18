@@ -543,6 +543,7 @@
         }
         
             // Load all comments
+        // Load all comments
         async function loadComments() {
             try {
                 // Clear existing comments
@@ -566,6 +567,9 @@
                         window.revealFee = ethers.BigNumber.from("0");
                     }
                 }
+                
+                // Get address-to-name mapping
+                const addressToName = getAddressNameMapping();
                 
                 // Load all comments (most recent first)
                 let commentsHTML = '';
@@ -593,7 +597,17 @@
                         // Determine author display
                         let authorDisplay = "Anonymous";
                         if (isRevealed) {
-                            authorDisplay = `${author.substring(0, 6)}...${author.substring(38)}`;
+                            // Check if the address is in our mapping
+                            const normalizedAddress = author.toLowerCase();
+                            const knownName = Object.keys(addressToName).find(addr => 
+                                addr.toLowerCase() === normalizedAddress
+                            );
+                            
+                            if (knownName) {
+                                authorDisplay = addressToName[knownName];
+                            } else {
+                                authorDisplay = `${author.substring(0, 6)}...${author.substring(38)}`;
+                            }
                         }
                         
                         // Create HTML for this comment
@@ -715,6 +729,38 @@
                 return error.message;
             }
             return String(error);
+        }
+        // Add this function to store the address-to-name mapping
+        function getAddressNameMapping() {
+            return {
+                "0x115178cc35Ed5fe549E02BAbeECa05A5A5721098": "Michael",
+                "0x39aaC54bab3ACd6a5a7759B7047Dc6aECE42b19d": "Collin",
+                "0xf237c60E7eEF0Bb688A6Ed0423828B5a92Dc8452": "Matthew",
+                "0x212f3dc3c287A04547fe74cfc7f7A5298Bf96f0f": "Pranav",
+                "0x327DF633f7dB3C3d1B1a9863B3738db6AA53390E": "Riyan",
+                "0x980d14666e23B159d8640067e77CFc09B495F2fe": "Olivia",
+                "0x7EfEEE57DB06Edad82cD63CeCB50D4da58d04672": "Nathaniel",
+                "0xcd617d2118CF4Fd756C6cB28B17a3B12D0422d2B": "Edwin",
+                "0xd96F89bB7830ac343f4124D8c22E59C83A313980": "Jacob",
+                "0x2aAc9B2196438Eea31755b825acd0426B17AB3Cc": "Milo",
+                "0x2240B1A5a72F8B48103A8a3C4712858191741d59": "Sean",
+                "0x5aD7d65351e3F662b4e379539af43B6fDB378B70": "Aviv",
+                "0x20d6751F0599265afFa8a0e92C3E411DE719AAbA": "Kyara",
+                "0xc0Cfd668A192D64C562258a44822cd64f7cb4A02": "Dylan",
+                "0x1911930c8F913dbF56973eeC884783e46a14FDea": "Tyler",
+                "0xa7001B5024026ba7166C7F45f88495216d1139db": "HughC",
+                "0x9502998F9ac612AF5b24b6cc3Ce9Ebe989CC734F": "HughA",
+                "0xC105e08Ec311975b91294137dB525fe6e60dC474": "Roen",
+                "0x2c96382A2f78500aD5cE12BB075a3eb3ac9AA679": "Brody",
+                "0x03328B9F6c45e64e23aadd32630a4a6ab1CB998f": "Anthony",
+                "0xEdbA99b7F64530A7b598223435CC4d9Ca766bd41": "Ian",
+                "0x6EC59934F0d6BD566cA402e86c10505A4E726f3C": "Christian",
+                "0x909402DF309b2aA741dA6aA14552a661d0765baD": "Bjorn",
+                "0x0E0679Ff4fd361f5309FCbaf35F2390A72D69653": "Ryan",
+                "0x70471121beB7cBa44A4309079A7F83E7326115e0": "Luca",
+                "0xC718B2FD6F5912511D558b1D6A04a9D2b9BE25bb": "MrTheiss",
+                "0x4fE347C8Bc564a47E92E1Ff7550eb3078b713D52": "MrLopez"
+            };
         }
     </script>
 </body>
